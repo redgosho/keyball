@@ -65,18 +65,28 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 // clang-format on
 
 layer_state_t layer_state_set_user(layer_state_t state) {
-    switch(get_highest_layer(remove_auto_mouse_layer(state, true))) {
-        case 3:
-            // Auto enable scroll mode when the highest layer is 3
-            // remove_auto_mouse_target must be called to adjust state *before* setting enable
-            state = remove_auto_mouse_layer(state, false);
-            set_auto_mouse_enable(false);
-            keyball_set_scroll_mode(true);
-            break;
-        default:
-            set_auto_mouse_enable(true);
-            keyball_set_scroll_mode(false);
-            break;
+    uint8_t rgb_layer = biton32(state);
+    uint8_t layer = get_highest_layer(remove_auto_mouse_layer(state, true));
+    bool is_scroll_mode_layer = (layer == 3);
+
+    // Set RGB LED color based on the active layer
+    HSV hsv_color;
+    switch (rgb_layer) {
+      case 0: hsv_color = (HSV){ .h = 0, .s = 255, .v = 255 };     break;
+      case 1: hsv_color = (HSV){ .h = 213, .s = 255, .v = 255 };   break;
+      case 2: hsv_color = (HSV){ .h = 170, .s = 255, .v = 255 };   break;
+      case 3: hsv_color = (HSV){ .h = 128, .s = 255, .v = 255 };   break;
+      case 4: hsv_color = (HSV){ .h = 0, .s = 0, .v = 255 };       break;
+      default: hsv_color = (HSV){ .h = 0, .s = 255, .v = 255 };    break;
+    }
+    rgblight_sethsv(hsv_color.h, hsv_color.s, hsv_color.v);
+
+    // Set auto mouse and scroll mode based on the layer
+    set_auto_mouse_enable(!is_scroll_mode_layer);
+    keyball_set_scroll_mode(is_scroll_mode_layer);
+
+    if (is_scroll_mode_layer) {
+        state = remove_auto_mouse_layer(state, false);
     }
     return state;
 }
