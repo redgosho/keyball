@@ -66,6 +66,7 @@ static inline int8_t clip2int8(int16_t v) {
     return (v) < -127 ? -127 : (v) > 127 ? 127 : (int8_t)v;
 }
 
+#ifdef OLED_ENABLE
 static const char *format_4d(int8_t d) {
     static char buf[5] = {0}; // max width (4) + NUL (1)
     char        lead   = ' ';
@@ -97,6 +98,7 @@ static char to_1x(uint8_t x) {
     x &= 0x0f;
     return x < 10 ? x + '0' : x + 'a' - 10;
 }
+#endif
 
 static void add_cpi(int8_t delta) {
     int16_t v = keyball_get_cpi() + delta;
@@ -409,23 +411,16 @@ void keyball_oled_render_keyinfo(void) {
 
 void keyball_oled_render_layerinfo(void) {
 #ifdef OLED_ENABLE
-    // Format: `Layer: --{layer}---}`
+    // Format: `Layer:{layer state}`
     //
     // Output example:
     //
-    //     Layer: ----4---
+    //     Layer:-23------------
     //
-    oled_write_P(PSTR("Layer: "), false);
-    layer_state_t layer = layer_state;
-    for (uint8_t i = 0; i < 8; i++) {
-        if (layer & 1) {
-            oled_write_char('0' + i, false);
-        } else {
-            oled_write_char('-', false);
-        }
-        layer >>= 1;
+    oled_write_P(PSTR("Layer:"), false);
+    for (uint8_t i = 1; i < 16; i++) {
+        oled_write_char((layer_state_is(i) ? to_1x(i) : '_'), false);
     }
-    oled_advance_page(true);
 #endif
 }
 
@@ -519,14 +514,14 @@ bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
 
     switch (keycode) {
 #ifndef MOUSEKEY_ENABLE
-        // // process KC_MS_BTN1~8 by myself
-        // // See process_action() in quantum/action.c for details.
-        // case KC_MS_BTN1 ... KC_MS_BTN8: {
-        //     extern void register_mouse(uint8_t mouse_keycode, bool pressed);
-        //     register_mouse(keycode, record->event.pressed);
-        //     // to apply QK_MODS actions, allow to process others.
-        //     return true;
-        // }
+        // process KC_MS_BTN1~8 by myself
+        // See process_action() in quantum/action.c for details.
+        case KC_MS_BTN1 ... KC_MS_BTN8: {
+            extern void register_mouse(uint8_t mouse_keycode, bool pressed);
+            register_mouse(keycode, record->event.pressed);
+            // to apply QK_MODS actions, allow to process others.
+            return true;
+        }
 #endif
 
         case SCRL_MO:
